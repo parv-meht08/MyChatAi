@@ -1,6 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useLocation } from "react-router-dom";
 import axios from "../config/axios";
+import {
+  initializeSocket,
+  receiveMessage,
+  sendMessage,
+} from "../config/socket";
+import { UserContext } from "../context/user.context";
 
 const Project = () => {
   const location = useLocation();
@@ -11,6 +17,9 @@ const Project = () => {
   const [selectedUserId, setSelectedUserId] = useState([]);
   const [users, setUsers] = useState([]);
   const [project, setProject] = useState(location.state.project);
+  const [message, setMessage] = useState("");
+  const { user } = useContext(UserContext);
+  const messageBox = React.createRef();
 
   function addCollaborator() {
     axios
@@ -39,7 +48,43 @@ const Project = () => {
     });
   };
 
+  const sendMessageHandler = () => {
+    sendMessage("projectMessage", {
+      message,
+      sender: user,
+    });
+
+    appendOutgoingMessage({
+      message,
+      sender: user,
+    });
+    setMessage("");
+  };
+
   useEffect(() => {
+    // Add CSS to hide scrollbar
+    const style = document.createElement('style');
+    style.textContent = `
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .message-box {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .message-box > div:last-child {
+        margin-bottom: 0.5rem;
+      }
+    `;
+    document.head.appendChild(style);
+
+    initializeSocket(project._id);
+
+    receiveMessage("projectMessage", (data) => {
+      console.log(data);
+      appendIncomingMessage(data);
+    });
+
     axios
       .get(`/projects/get-project/${project._id}`)
       .then((res) => {
@@ -60,10 +105,60 @@ const Project = () => {
       });
   }, [project._id]);
 
+  function appendIncomingMessage(messageObject) {
+    const messageBox = document.querySelector(".message-box");
+
+    const messageElement = document.createElement("div");
+    messageElement.classList.add(
+      "receiving-message",
+      "message",
+      "flex",
+      "flex-col",
+      "p-2",
+      "bg-slate-50",
+      "w-fit",
+      "rounded-md"
+    );
+    messageElement.innerHTML = `
+    <small class="opacity-50 text-xs">${messageObject.sender.email}</small>
+    <p class="text-sm">${messageObject.message}</p>
+    `;
+    messageBox.appendChild(messageElement);
+    scrollToBottom();
+  }
+
+  function appendOutgoingMessage(messageObject) {
+    const messageBox = document.querySelector(".message-box");
+
+    const messageElement = document.createElement("div");
+    messageElement.classList.add(
+      "ml-auto",
+      "sending-message",
+      "message",
+      "flex",
+      "flex-col",
+      "p-2",
+      "bg-slate-50",
+      "w-fit",
+      "rounded-md"
+    );
+    messageElement.innerHTML = `
+    <small class="opacity-50 text-xs">${messageObject.sender.email}</small>
+    <p class="text-sm">${messageObject.message}</p>
+    `;
+    messageBox.appendChild(messageElement);
+    scrollToBottom();
+  }
+
+  function scrollToBottom() {
+    const messageBox = document.querySelector(".message-box");
+    messageBox.scrollTop = messageBox.scrollHeight;
+  }
+
   return (
     <main className="h-screen w-screen flex">
-      <section className="flex flex-col left h-full min-w-96 bg-slate-300 relative">
-        <header className="flex justify-between items-center p-2 px-4 w-full bg-slate-100">
+      <section className="flex flex-col left min-w-96 bg-slate-300 relative h-screen">
+        <header className="flex justify-between items-center p-2 px-4 w-full bg-slate-100 absolute top-0 z-10">
           <button className="flex gap-2" onClick={() => setIsModalOpen(true)}>
             <i className="ri-add-fill mr-1"></i>
             <p>Add Collaborator</p>
@@ -77,25 +172,28 @@ const Project = () => {
           </button>
         </header>
 
-        <div className="conversation-area flex-grow flex flex-col">
-          <div className="message-box flex-grow flex flex-col gap-1 p-1">
-            <div className="max-w-56receiving-message message flex flex-col p-2 bg-slate-50 w-fit rounded-md">
-              <small className="opacity-50 text-xs">example@gmail.com</small>
-              <p className="text-sm">Lorem ipsum dolor sit amet.</p>
-            </div>
-
-            <div className="max-w-56 ml-auto sending-message message flex flex-col p-2 bg-slate-50 w-fit rounded-md">
-              <small className="opacity-50 text-xs">example@gmail.com</small>
-              <p className="text-sm">Lorem ipsum dolor sit amet.</p>
-            </div>
-          </div>
-          <div className="inoutField w-full flex gap-1 pb-2">
+        <div className="conversation-area flex flex-col h-full pt-14 pb-16">
+          <div
+            ref={messageBox}
+            className="message-box flex-grow flex flex-col gap-1 p-1 overflow-y-auto scrollbar-hide"
+            style={{
+              maxHeight: 'calc(100vh - 8.5rem)',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none'
+            }}
+          ></div>
+          <div className="inputField w-full flex gap-1 pb-2 absolute bottom-0 px-2 bg-slate-300">
             <input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
               className="flex-grow p-2 px-5 border-none outline-none rounded-xl"
               type="text"
               placeholder="Enter Message"
             />
-            <button className="px-4 bg-slate-800 rounded-xl">
+            <button
+              onClick={sendMessageHandler}
+              className="px-4 bg-slate-800 rounded-xl "
+            >
               <i className="ri-send-plane-fill text-lg text-white"></i>
             </button>
           </div>
@@ -107,7 +205,7 @@ const Project = () => {
           } flex flex-col gap-2`}
         >
           <header className="flex justify-between items-center px-4 p-2 bg-slate-200">
-          <h1 className="text-lg font-semibold">Collaborators</h1>
+            <h1 className="text-lg font-semibold">Collaborators</h1>
             <button onClick={() => setIsSidePanelOpen(!isSidePanelOpen)}>
               <i className="ri-close-fill"></i>
             </button>
@@ -115,7 +213,10 @@ const Project = () => {
 
           <div className="users flex flex-col p-2">
             {project?.users?.map((user, index) => (
-              <div key={user._id || index} className="user flex gap-2 items-center cursor-pointer hover:bg-slate-200 p-2">
+              <div
+                key={user._id || index}
+                className="user flex gap-2 items-center cursor-pointer hover:bg-slate-200 p-2"
+              >
                 <div className="aspect-square rounded-full p-4 text-white w-fit h-fit flex items-center justify-center bg-slate-600">
                   <i className="ri-user-fill absolute"></i>
                 </div>
