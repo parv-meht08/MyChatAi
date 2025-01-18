@@ -7,6 +7,7 @@ import {
   sendMessage,
 } from "../config/socket";
 import { UserContext } from "../context/user.context";
+import Markdown from 'markdown-to-jsx'
 
 const Project = () => {
   const location = useLocation();
@@ -116,13 +117,24 @@ const Project = () => {
       "flex-col",
       "p-2",
       "bg-slate-50",
-      "w-fit",
-      "rounded-md"
+      "max-w-[70%]",
+      "rounded-md",
+      "break-words"
     );
-    messageElement.innerHTML = `
-    <small class="opacity-50 text-xs">${messageObject.sender.email}</small>
-    <p class="text-sm">${messageObject.message}</p>
-    `;
+
+    if (messageObject.sender._id === "ai") {
+      const markdown = <Markdown>{messageObject.message}</Markdown>;
+      messageElement.innerHTML = `
+        <small class="opacity-50 text-xs">${messageObject.sender.email}</small>
+        <p class="text-sm whitespace-pre-wrap">${markdown}</p>
+        `;
+    } else {
+      messageElement.innerHTML = `
+      <small class="opacity-50 text-xs">${messageObject.sender.email}</small>
+      <p class="text-sm whitespace-pre-wrap">${messageObject.message}</p>
+      `;
+    }
+
     messageBox.appendChild(messageElement);
     scrollToBottom();
   }
@@ -139,12 +151,13 @@ const Project = () => {
       "flex-col",
       "p-2",
       "bg-slate-50",
-      "w-fit",
-      "rounded-md"
+      "max-w-[70%]",
+      "rounded-md",
+      "break-words"
     );
     messageElement.innerHTML = `
     <small class="opacity-50 text-xs">${messageObject.sender.email}</small>
-    <p class="text-sm">${messageObject.message}</p>
+    <p class="text-sm whitespace-pre-wrap">${messageObject.message}</p>
     `;
     messageBox.appendChild(messageElement);
     scrollToBottom();
@@ -157,7 +170,7 @@ const Project = () => {
 
   return (
     <main className="h-screen w-screen flex">
-      <section className="flex flex-col left min-w-96 bg-slate-300 relative h-screen">
+      <section className="flex flex-col left w-[400px] bg-slate-300 relative h-screen">
         <header className="flex justify-between items-center p-2 px-4 w-full bg-slate-100 absolute top-0 z-10">
           <button className="flex gap-2" onClick={() => setIsModalOpen(true)}>
             <i className="ri-add-fill mr-1"></i>
@@ -179,7 +192,8 @@ const Project = () => {
             style={{
               maxHeight: 'calc(100vh - 8.5rem)',
               scrollbarWidth: 'none',
-              msOverflowStyle: 'none'
+              msOverflowStyle: 'none',
+              width: '100%'
             }}
           ></div>
           <div className="inputField w-full flex gap-1 pb-2 absolute bottom-0 px-2 bg-slate-300">
