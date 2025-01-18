@@ -7,7 +7,37 @@ import {
   sendMessage,
 } from "../config/socket";
 import { UserContext } from "../context/user.context";
-import Markdown from 'markdown-to-jsx'
+import Markdown from 'markdown-to-jsx';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import ReactDOM from 'react-dom';
+
+const CodeBlock = ({ children, className }) => {
+  const language = className ? className.replace('lang-', '') : 'javascript';
+  return (
+    <div className="rounded-md overflow-hidden my-2">
+      <SyntaxHighlighter
+        language={language}
+        style={vscDarkPlus}
+        customStyle={{
+          margin: 0,
+          padding: '1rem',
+          fontSize: '0.875rem',
+        }}
+      >
+        {children}
+      </SyntaxHighlighter>
+    </div>
+  );
+};
+
+const options = {
+  overrides: {
+    code: {
+      component: CodeBlock
+    }
+  }
+};
 
 const Project = () => {
   const location = useLocation();
@@ -122,12 +152,19 @@ const Project = () => {
       "break-words"
     );
 
-    if (messageObject.sender._id === "ai") {
-      const markdown = <Markdown>{messageObject.message}</Markdown>;
-      messageElement.innerHTML = `
-        <small class="opacity-50 text-xs">${messageObject.sender.email}</small>
-        <p class="text-sm whitespace-pre-wrap">${markdown}</p>
-        `;
+    if (messageObject.sender._id === "AI") {
+      // Create a temporary container for React rendering
+      const tempContainer = document.createElement('div');
+      const root = ReactDOM.createRoot(tempContainer);
+      root.render(
+        <div>
+          <small className="opacity-50 text-xs">{messageObject.sender.email}</small>
+          <div className="text-sm whitespace-pre-wrap">
+            <Markdown options={options}>{messageObject.message}</Markdown>
+          </div>
+        </div>
+      );
+      messageElement.appendChild(tempContainer);
     } else {
       messageElement.innerHTML = `
       <small class="opacity-50 text-xs">${messageObject.sender.email}</small>
