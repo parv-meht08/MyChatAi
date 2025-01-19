@@ -51,6 +51,18 @@ const Project = () => {
   const [message, setMessage] = useState("");
   const { user } = useContext(UserContext);
   const messageBox = React.createRef();
+  const [fileTree, setFileTree] = useState({
+    "app.js": {
+      content: `const express = require('express');`,
+    },
+    "package.json": {
+      content: `{
+        "name": "temp-server"
+      }`,
+    },
+  });
+  const [currentFile, setCurrentFile] = useState(null);
+  const [openFiles, setOpenFiles] = useState([])
 
   function addCollaborator() {
     axios
@@ -215,7 +227,6 @@ const Project = () => {
     messageBox.scrollTop = messageBox.scrollHeight;
   }
 
-
   return (
     <main className="h-screen w-screen flex">
       <section className="flex flex-col left w-[400px] bg-slate-300 relative h-screen">
@@ -287,6 +298,67 @@ const Project = () => {
             ))}
           </div>
         </div>
+      </section>
+
+      <section className="right bg-red-100 flex-grow h-full flex">
+        <div className="explorer h-full min-w-52 max-w-64 bg-slate-400">
+          <div className="fileTree w-full">
+            {Object.keys(fileTree).map((file) => (
+              <button
+                key={file}
+                onClick={() => {
+                  setCurrentFile(file);
+                  setOpenFiles(
+                    openFiles.includes(file) ? openFiles : [...openFiles, file]
+                  );
+                }}
+                className="tree-element p-2 px-4 flex items-center gap-2 bg-slate-200 w-full cursor-pointer hover:bg-slate-300"
+              >
+                <p className="font-semibold text-lg">{file}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {currentFile && (
+          <div className="code-editor flex flex-col h-full flex-grow">
+            <div className="top flex gap-1 bg-slate-200 p-1">
+              {
+                openFiles.map((file, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      setCurrentFile(file);
+                    }}
+                    className={`font-semibold text-lg p-2 transition-colors ${
+                      currentFile === file
+                        ? "bg-slate-600 text-white"
+                        : "bg-slate-300 hover:bg-slate-400"
+                    }`}
+                  >
+                    {file}
+                  </button>
+                ))
+              }
+            </div>
+            <div className="bottom flex flex-grow h-full">
+              {fileTree[currentFile] && (
+                <textarea
+                value={fileTree[currentFile].content}
+                onChange={(e) => {
+                  setFileTree({
+                    ...fileTree,
+                    [currentFile]: {
+                      ...fileTree[currentFile],
+                      content: e.target.value,
+                    },
+                  })
+                }}
+                className="w-full h-full p-4 bg-slate-50"></textarea>
+              )}
+            </div>
+          </div>
+        )}
       </section>
 
       <div
