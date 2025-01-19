@@ -7,13 +7,13 @@ import {
   sendMessage,
 } from "../config/socket";
 import { UserContext } from "../context/user.context";
-import Markdown from 'markdown-to-jsx';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import ReactDOM from 'react-dom';
+import Markdown from "markdown-to-jsx";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import ReactDOM from "react-dom";
 
 const CodeBlock = ({ children, className }) => {
-  const language = className ? className.replace('lang-', '') : 'javascript';
+  const language = className ? className.replace("lang-", "") : "javascript";
   return (
     <div className="rounded-md overflow-hidden my-2">
       <SyntaxHighlighter
@@ -21,8 +21,8 @@ const CodeBlock = ({ children, className }) => {
         style={vscDarkPlus}
         customStyle={{
           margin: 0,
-          padding: '1rem',
-          fontSize: '0.875rem',
+          padding: "1rem",
+          fontSize: "0.875rem",
         }}
       >
         {children}
@@ -34,9 +34,9 @@ const CodeBlock = ({ children, className }) => {
 const options = {
   overrides: {
     code: {
-      component: CodeBlock
-    }
-  }
+      component: CodeBlock,
+    },
+  },
 };
 
 const Project = () => {
@@ -94,7 +94,7 @@ const Project = () => {
 
   useEffect(() => {
     // Add CSS to hide scrollbar
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `
       .scrollbar-hide::-webkit-scrollbar {
         display: none;
@@ -153,15 +153,25 @@ const Project = () => {
     );
 
     if (messageObject.sender._id === "AI") {
+      // Parse the JSON response to get only the text content
+      let messageText = messageObject.message;
+      try {
+        const parsedMessage = JSON.parse(messageObject.message);
+        messageText = parsedMessage.text || messageObject.message;
+      } catch (error) {
+        // If parsing fails, use the original message
+        console.log("Failed to parse AI message as JSON");
+      }
+
       // Create a temporary container for React rendering
-      const tempContainer = document.createElement('div');
+      const tempContainer = document.createElement("div");
       const root = ReactDOM.createRoot(tempContainer);
       root.render(
         <div>
-          <small className="opacity-50 text-xs">{messageObject.sender.email}</small>
-          <div className="text-sm whitespace-pre-wrap">
-            <Markdown options={options}>{messageObject.message}</Markdown>
-          </div>
+          <small className="opacity-50 text-xs">
+            {messageObject.sender.email}
+          </small>
+          <p className="text-sm whitespace-pre-wrap">{messageText}</p>
         </div>
       );
       messageElement.appendChild(tempContainer);
@@ -205,6 +215,7 @@ const Project = () => {
     messageBox.scrollTop = messageBox.scrollHeight;
   }
 
+
   return (
     <main className="h-screen w-screen flex">
       <section className="flex flex-col left w-[400px] bg-slate-300 relative h-screen">
@@ -227,10 +238,10 @@ const Project = () => {
             ref={messageBox}
             className="message-box flex-grow flex flex-col gap-1 p-1 overflow-y-auto scrollbar-hide"
             style={{
-              maxHeight: 'calc(100vh - 8.5rem)',
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-              width: '100%'
+              maxHeight: "calc(100vh - 8.5rem)",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+              width: "100%",
             }}
           ></div>
           <div className="inputField w-full flex gap-1 pb-2 absolute bottom-0 px-2 bg-slate-300">
