@@ -51,16 +51,7 @@ const Project = () => {
   const [message, setMessage] = useState("");
   const { user } = useContext(UserContext);
   const messageBox = React.createRef();
-  const [fileTree, setFileTree] = useState({
-    "app.js": {
-      content: `const express = require('express');`,
-    },
-    "package.json": {
-      content: `{
-        "name": "temp-server"
-      }`,
-    },
-  });
+  const [fileTree, setFileTree] = useState({});
   const [currentFile, setCurrentFile] = useState(null);
   const [openFiles, setOpenFiles] = useState([])
 
@@ -124,7 +115,11 @@ const Project = () => {
     initializeSocket(project._id);
 
     receiveMessage("projectMessage", (data) => {
-      console.log(data);
+      const message = JSON.parse(data.message)
+
+      if(message.fileTree){
+        setFileTree(message.fileTree)
+      }
       appendIncomingMessage(data);
     });
 
