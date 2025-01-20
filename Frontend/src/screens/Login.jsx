@@ -16,12 +16,16 @@ const Login = () => {
     axios
       .post("/users/login", { email, password })
       .then((res) => {
-        localStorage.setItem("token", res.data.token);
+        console.log("Login successful:", res.data);
+        const token = res.data.token;
+        localStorage.setItem("token", token);
+        // Update axios default headers
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         setUser(res.data.user);
         navigate("/");
       })
       .catch((err) => {
-        console.log(err);
+        console.log("Login failed:", err);
       });
   }
 

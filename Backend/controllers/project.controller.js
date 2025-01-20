@@ -17,7 +17,6 @@ export const createProjectController = async (req, res) => {
     const project = await projectService.createProject({ name, userId });
     return res.status(201).json({ project });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -32,7 +31,6 @@ export const getAllProjects = async (req, res) => {
 
     return res.status(200).json({ projects: allUserProjects });
   } catch (error) {
-    console.log(error);
     return res.status(404).json({ message: error.message });
   }
 };
@@ -60,7 +58,6 @@ export const addUserToProject = async (req, res) => {
       .status(200)
       .json({ project, message: "User added to project successfully" });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -78,7 +75,6 @@ export const getProjectById = async (req, res) => {
 
     return res.status(200).json({ project });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -95,7 +91,6 @@ export const updateFileTree = async (req, res) => {
     }
     return res.status(200).json({ project });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ message: error.message });
   }
 };

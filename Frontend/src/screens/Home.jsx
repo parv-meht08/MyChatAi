@@ -13,6 +13,7 @@ export default function Home() {
     axios
       .get("/projects/all")
       .then((res) => {
+        console.log("Projects fetched successfully:", res.data.projects);
         setProjects(res.data.projects);
       })
       .catch((err) => {
@@ -28,6 +29,7 @@ export default function Home() {
     axios
       .post("/projects/create", { name: projectName })
       .then((res) => {
+        console.log("Project created successfully:", res.data);
         // After creating a project, fetch all projects again
         fetchProjects();
       })

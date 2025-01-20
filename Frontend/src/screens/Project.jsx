@@ -42,7 +42,6 @@ const options = {
 
 const Project = () => {
   const location = useLocation();
-  console.log(location.state);
 
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,38 +58,46 @@ const Project = () => {
   const [pendingFileTree, setPendingFileTree] = useState(null);
   const [iFrameURL, setIFrameURL] = useState(null)
   const [runProcess, setRunProcess] = useState(null)
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const mountFileTree = async (tree) => {
     if (webContainer && tree) {
       try {
-        // Convert file tree to WebContainer format
-        const webContainerFiles = {};
-        Object.keys(tree).forEach(fileName => {
-          if (tree[fileName] && tree[fileName].file && tree[fileName].file.contents) {
-            webContainerFiles[fileName] = {
-              file: {
-                contents: tree[fileName].file.contents
-              }
-            };
-          }
-        });
-
-        if (Object.keys(webContainerFiles).length > 0) {
-          await webContainer.mount(webContainerFiles);
-          console.log('Files mounted successfully');
-        }
+        await webContainer.mount(tree);
       } catch (error) {
-        console.error('Error mounting files:', error);
+        console.error("Failed to mount file tree:", error);
       }
     }
   };
 
   useEffect(() => {
+    if (project.fileTree) {
+      setFileTree(project.fileTree);
+      setPendingFileTree(project.fileTree);
+    }
+  }, [project.fileTree]);
+
+  useEffect(() => {
     if (webContainer && pendingFileTree) {
       mountFileTree(pendingFileTree);
-      setPendingFileTree(null);
     }
   }, [webContainer, pendingFileTree]);
+
+  useEffect(() => {
+    const initWebContainer = async () => {
+      try {
+        const container = await getWebContainer();
+        setWebContainer(container);
+        console.log("WebContainer initialized successfully");
+      } catch (err) {
+        console.error("Failed to initialize WebContainer:", err);
+        setError("Failed to initialize development environment");
+      }
+    };
+
+    initWebContainer();
+  }, []);
 
   function addCollaborator() {
     axios
@@ -104,7 +111,7 @@ const Project = () => {
         setIsModalOpen(false);
       })
       .catch((err) => {
-        console.log(err);
+        console.error("Failed to add collaborator:", err);
       });
   }
 
@@ -151,55 +158,41 @@ const Project = () => {
 
     initializeSocket(project._id);
 
-    if(!webContainer){
-      getWebContainer().then(container => {
-        setWebContainer(container);
-        console.log("WebContainer started");
-      }).catch(error => {
-        console.error("Failed to start WebContainer:", error);
-      });
-    }
-
     receiveMessage("projectMessage", (data) => {
       try {
-        console.log("Raw message received:", data.message);
-        
         let message;
         if (typeof data.message === "string") {
-          if (!data.message || data.message.trim() === "") {
-            console.error("Received empty message");
-            return;
+          try {
+            message = JSON.parse(data.message);
+          } catch (parseError) {
+            // If parsing fails, treat it as a plain text message
+            message = { text: data.message };
           }
-          message = JSON.parse(data.message);
         } else {
           message = data.message;
         }
 
         if (message && message.fileTree) {
-          const cleanFileTree = {};
-          Object.keys(message.fileTree).forEach(key => {
-            if (key !== 'buildCommand' && key !== 'startCommand') {
-              cleanFileTree[key] = message.fileTree[key];
-            }
-          });
-          setFileTree(cleanFileTree);
-          setPendingFileTree(cleanFileTree);
+          setFileTree(message.fileTree);
+          setPendingFileTree(message.fileTree);
         }
-        appendIncomingMessage(data);
+        appendIncomingMessage({
+          ...data,
+          message: message
+        });
       } catch (error) {
-        console.error("Error parsing message:", error);
+        console.error("Error handling message:", error);
       }
     });
 
     axios
       .get(`/projects/get-project/${project._id}`)
       .then((res) => {
-        console.log(res.data.project);
         setProject(res.data.project);
         setFileTree(res.data.project.fileTree || {});
       })
       .catch((err) => {
-        console.log(err);
+        console.error("Failed to get project:", err);
       });
 
     axios
@@ -208,7 +201,7 @@ const Project = () => {
         setUsers(res.data.users);
       })
       .catch((err) => {
-        console.log(err);
+        console.error("Failed to get users:", err);
       });
   }, [project._id]);
 
@@ -230,11 +223,8 @@ const Project = () => {
 
     if (messageObject.sender._id === "AI") {
       let messageText = messageObject.message;
-      try {
-        const parsedMessage = JSON.parse(messageObject.message);
-        messageText = parsedMessage.text || messageObject.message;
-      } catch (error) {
-        console.log("Failed to parse AI message as JSON");
+      if (typeof messageText === 'object') {
+        messageText = messageObject.message.text || JSON.stringify(messageText);
       }
 
       const tempContainer = document.createElement("div");
@@ -249,9 +239,13 @@ const Project = () => {
       );
       messageElement.appendChild(tempContainer);
     } else {
+      const messageText = typeof messageObject.message === 'object' 
+        ? messageObject.message.text || JSON.stringify(messageObject.message)
+        : messageObject.message;
+        
       messageElement.innerHTML = `
-      <small class="opacity-50 text-xs">${messageObject.sender.email}</small>
-      <p class="text-sm whitespace-pre-wrap">${messageObject.message}</p>
+        <small class="opacity-50 text-xs">${messageObject.sender.email}</small>
+        <p class="text-sm whitespace-pre-wrap">${messageText}</p>
       `;
     }
 
@@ -294,7 +288,6 @@ const Project = () => {
       fileTree: ft,
     })
     .then((res) => {
-      console.log(res.data.project);
       setProject(res.data.project);
       setFileTree(res.data.project.fileTree || {});
     })
@@ -430,7 +423,6 @@ const Project = () => {
 
                   installProcess?.output.pipeTo(new WritableStream({
                     write(chunk) {
-                      console.log(chunk);
                     }
                   }))  
 
@@ -442,23 +434,18 @@ const Project = () => {
 
                   tempRunProcess?.output.pipeTo(new WritableStream({
                     write(chunk) {
-                      console.log(chunk);
                     }
                   }))
 
                   setRunProcess(tempRunProcess);
 
                   webContainer.on('server-ready', (port, url) => {
-                    console.log(port, url);
                     setIFrameURL(url);
                   })
                 }}
-
                 className="font-semibold text-lg p-2 transition-colors bg-slate-300 hover:bg-slate-400"
                 >run</button>
-
               </div>
-
             </div>
 
             <div className="bottom flex flex-grow h-full">
