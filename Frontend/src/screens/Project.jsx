@@ -52,7 +52,7 @@ const Project = () => {
   const [message, setMessage] = useState("");
   const { user } = useContext(UserContext);
   const messageBox = React.createRef();
-  const [fileTree, setFileTree] = useState({});
+  const [fileTree, setFileTree] = useState(location.state.project?.fileTree || {});
   const [currentFile, setCurrentFile] = useState(null);
   const [openFiles, setOpenFiles] = useState([]);
   const [webContainer, setWebContainer] = useState(null);
@@ -196,6 +196,7 @@ const Project = () => {
       .then((res) => {
         console.log(res.data.project);
         setProject(res.data.project);
+        setFileTree(res.data.project.fileTree || {});
       })
       .catch((err) => {
         console.log(err);
@@ -287,8 +288,19 @@ const Project = () => {
     messageBox.scrollTop = messageBox.scrollHeight;
   }
 
-  function saveFileTree(fileTree) {
-    // Implement logic to save the file tree
+  function saveFileTree(ft) {
+    axios.put("/projects/update-file-tree", {
+      projectId: project._id,
+      fileTree: ft,
+    })
+    .then((res) => {
+      console.log(res.data.project);
+      setProject(res.data.project);
+      setFileTree(res.data.project.fileTree || {});
+    })
+    .catch((err) => {
+      console.error("Error saving file tree:", err);
+    });
   }
 
   return (
@@ -367,7 +379,7 @@ const Project = () => {
       <section className="right bg-red-100 flex-grow h-full flex">
         <div className="explorer h-full min-w-52 max-w-64 bg-slate-400">
           <div className="fileTree w-full">
-            {Object.keys(fileTree).map((file) => (
+            {Object.keys(fileTree || {}).map((file) => (
               <button
                 key={file}
                 onClick={() => {
@@ -454,7 +466,7 @@ const Project = () => {
                 <textarea
                 value={fileTree[currentFile].file.contents}
                 onChange={(e) => {
-                  const updatedFileTree = {
+                  const ft = {
                     ...fileTree,
                     [currentFile]: {
                       ...fileTree[currentFile],
@@ -464,8 +476,8 @@ const Project = () => {
                       }
                     }
                   };
-                  setFileTree(updatedFileTree);
-                  saveFileTree(updatedFileTree);
+                  setFileTree(ft);
+                  saveFileTree(ft);
                 }}
                 className="w-full h-full p-4 font-mono text-[15px] bg-slate-800 text-[#d4d4d4] outline-none resize-none"
                 style={{
