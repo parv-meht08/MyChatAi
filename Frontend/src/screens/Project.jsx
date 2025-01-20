@@ -11,6 +11,7 @@ import Markdown from "markdown-to-jsx";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import ReactDOM from "react-dom";
+import { getWebContainer } from "../config/webContainer";
 
 const CodeBlock = ({ children, className }) => {
   const language = className ? className.replace("lang-", "") : "javascript";
@@ -53,7 +54,41 @@ const Project = () => {
   const messageBox = React.createRef();
   const [fileTree, setFileTree] = useState({});
   const [currentFile, setCurrentFile] = useState(null);
-  const [openFiles, setOpenFiles] = useState([])
+  const [openFiles, setOpenFiles] = useState([]);
+  const [webContainer, setWebContainer] = useState(null);
+  const [pendingFileTree, setPendingFileTree] = useState(null);
+
+  const mountFileTree = async (tree) => {
+    if (webContainer && tree) {
+      try {
+        // Convert file tree to WebContainer format
+        const webContainerFiles = {};
+        Object.keys(tree).forEach(fileName => {
+          if (tree[fileName] && tree[fileName].file && tree[fileName].file.contents) {
+            webContainerFiles[fileName] = {
+              file: {
+                contents: tree[fileName].file.contents
+              }
+            };
+          }
+        });
+
+        if (Object.keys(webContainerFiles).length > 0) {
+          await webContainer.mount(webContainerFiles);
+          console.log('Files mounted successfully');
+        }
+      } catch (error) {
+        console.error('Error mounting files:', error);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (webContainer && pendingFileTree) {
+      mountFileTree(pendingFileTree);
+      setPendingFileTree(null);
+    }
+  }, [webContainer, pendingFileTree]);
 
   function addCollaborator() {
     axios
@@ -114,13 +149,34 @@ const Project = () => {
 
     initializeSocket(project._id);
 
-    receiveMessage("projectMessage", (data) => {
-      const message = JSON.parse(data.message)
+    if(!webContainer){
+      getWebContainer().then(container => {
+        setWebContainer(container);
+        console.log("WebContainer started");
+      }).catch(error => {
+        console.error("Failed to start WebContainer:", error);
+      });
+    }
 
-      if(message.fileTree){
-        setFileTree(message.fileTree)
+    receiveMessage("projectMessage", (data) => {
+      try {
+        const message = typeof data.message === "string" ? JSON.parse(data.message) : data.message;
+
+        if (message && message.fileTree) {
+          // Remove buildCommand and startCommand from file tree
+          const cleanFileTree = {};
+          Object.keys(message.fileTree).forEach(key => {
+            if (key !== 'buildCommand' && key !== 'startCommand') {
+              cleanFileTree[key] = message.fileTree[key];
+            }
+          });
+          setFileTree(cleanFileTree);
+          setPendingFileTree(cleanFileTree);
+        }
+        appendIncomingMessage(data);
+      } catch (error) {
+        console.error("Error parsing message:", error);
       }
-      appendIncomingMessage(data);
     });
 
     axios
@@ -220,6 +276,10 @@ const Project = () => {
   function scrollToBottom() {
     const messageBox = document.querySelector(".message-box");
     messageBox.scrollTop = messageBox.scrollHeight;
+  }
+
+  function saveFileTree(fileTree) {
+    // Implement logic to save the file tree
   }
 
   return (
@@ -337,19 +397,28 @@ const Project = () => {
               }
             </div>
             <div className="bottom flex flex-grow h-full">
-              {fileTree[currentFile] && (
+              {fileTree[currentFile] && fileTree[currentFile].file && (
                 <textarea
-                value={fileTree[currentFile].content}
+                value={fileTree[currentFile].file.contents}
                 onChange={(e) => {
-                  setFileTree({
+                  const updatedFileTree = {
                     ...fileTree,
                     [currentFile]: {
                       ...fileTree[currentFile],
-                      content: e.target.value,
-                    },
-                  })
+                      file: {
+                        ...fileTree[currentFile].file,
+                        contents: e.target.value
+                      }
+                    }
+                  };
+                  setFileTree(updatedFileTree);
+                  saveFileTree(updatedFileTree);
                 }}
-                className="w-full h-full p-4 bg-slate-50"></textarea>
+                className="w-full h-full p-4 font-mono text-[15px] bg-slate-800 text-[#d4d4d4] outline-none resize-none"
+                style={{
+                  lineHeight: "1.5",
+                  tabSize: "2",
+                }}></textarea>
               )}
             </div>
           </div>

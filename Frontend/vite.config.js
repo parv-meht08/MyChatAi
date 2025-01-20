@@ -4,4 +4,21 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    headers: {
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
+    },
+    hmr: {
+      overlay: false
+    }
+  },
+  optimizeDeps: {
+    exclude: ['@webcontainer/api']
+  },
+  build: {
+    rollupOptions: {
+      external: ['@webcontainer/api']
+    }
+  }
 })

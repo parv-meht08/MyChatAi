@@ -9,6 +9,13 @@ import { generateResult } from './services/ai.service.js';
 
 const port = process.env.PORT || 3000;
 
+// Add these headers for all responses
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  next();
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
