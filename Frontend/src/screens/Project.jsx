@@ -58,6 +58,7 @@ const Project = () => {
   const [webContainer, setWebContainer] = useState(null);
   const [pendingFileTree, setPendingFileTree] = useState(null);
   const [iFrameURL, setIFrameURL] = useState(null)
+  const [runProcess, setRunProcess] = useState(null)
 
   const mountFileTree = async (tree) => {
     if (webContainer && tree) {
@@ -161,10 +162,20 @@ const Project = () => {
 
     receiveMessage("projectMessage", (data) => {
       try {
-        const message = typeof data.message === "string" ? JSON.parse(data.message) : data.message;
+        console.log("Raw message received:", data.message);
+        
+        let message;
+        if (typeof data.message === "string") {
+          if (!data.message || data.message.trim() === "") {
+            console.error("Received empty message");
+            return;
+          }
+          message = JSON.parse(data.message);
+        } else {
+          message = data.message;
+        }
 
         if (message && message.fileTree) {
-          // Remove buildCommand and startCommand from file tree
           const cleanFileTree = {};
           Object.keys(message.fileTree).forEach(key => {
             if (key !== 'buildCommand' && key !== 'startCommand') {
@@ -217,17 +228,14 @@ const Project = () => {
     );
 
     if (messageObject.sender._id === "AI") {
-      // Parse the JSON response to get only the text content
       let messageText = messageObject.message;
       try {
         const parsedMessage = JSON.parse(messageObject.message);
         messageText = parsedMessage.text || messageObject.message;
       } catch (error) {
-        // If parsing fails, use the original message
         console.log("Failed to parse AI message as JSON");
       }
 
-      // Create a temporary container for React rendering
       const tempContainer = document.createElement("div");
       const root = ReactDOM.createRoot(tempContainer);
       root.render(
@@ -412,15 +420,21 @@ const Project = () => {
                     write(chunk) {
                       console.log(chunk);
                     }
-                  }))
+                  }))  
 
-                  const runProcess = await webContainer?.spawn("npm", ["start"]);
+                  if(runProcess) {
+                    runProcess.kill();
+                  }
 
-                  runProcess?.output.pipeTo(new WritableStream({
+                  let tempRunProcess = await webContainer?.spawn("npm", ["start"]);
+
+                  tempRunProcess?.output.pipeTo(new WritableStream({
                     write(chunk) {
                       console.log(chunk);
                     }
                   }))
+
+                  setRunProcess(tempRunProcess);
 
                   webContainer.on('server-ready', (port, url) => {
                     console.log(port, url);
@@ -434,6 +448,7 @@ const Project = () => {
               </div>
 
             </div>
+
             <div className="bottom flex flex-grow h-full">
               {fileTree[currentFile] && fileTree[currentFile].file && (
                 <textarea
@@ -462,11 +477,20 @@ const Project = () => {
           </div>
 
           {iFrameURL && webContainer && (
-            <div className="w-full h-full">
+            <div className="flex min-w-96 flex-col h-full">
+              <div className="address-bar">
+                <input
+                  value={iFrameURL}
+                  onChange={(e) => setIFrameURL(e.target.value)}
+                  className="w-full p-2 px-5 border-none outline-none"
+                  type="text"
+                  placeholder="Enter URL"
+                />
+              </div>
               <iframe
                 src={iFrameURL}
                 title="Web Container"
-                className="w-1/2 h-full"
+                className="w-full h-full"
               />
             </div>
           )}
