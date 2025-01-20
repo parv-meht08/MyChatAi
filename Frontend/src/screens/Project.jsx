@@ -57,6 +57,7 @@ const Project = () => {
   const [openFiles, setOpenFiles] = useState([]);
   const [webContainer, setWebContainer] = useState(null);
   const [pendingFileTree, setPendingFileTree] = useState(null);
+  const [iFrameURL, setIFrameURL] = useState(null)
 
   const mountFileTree = async (tree) => {
     if (webContainer && tree) {
@@ -420,10 +421,18 @@ const Project = () => {
                       console.log(chunk);
                     }
                   }))
+
+                  webContainer.on('server-ready', (port, url) => {
+                    console.log(port, url);
+                    setIFrameURL(url);
+                  })
                 }}
+
+                className="font-semibold text-lg p-2 transition-colors bg-slate-300 hover:bg-slate-400"
                 >run</button>
 
               </div>
+
             </div>
             <div className="bottom flex flex-grow h-full">
               {fileTree[currentFile] && fileTree[currentFile].file && (
@@ -451,6 +460,16 @@ const Project = () => {
               )}
             </div>
           </div>
+
+          {iFrameURL && webContainer && (
+            <div className="w-full h-full">
+              <iframe
+                src={iFrameURL}
+                title="Web Container"
+                className="w-1/2 h-full"
+              />
+            </div>
+          )}
 
       </section>
 
