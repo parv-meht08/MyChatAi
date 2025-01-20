@@ -375,9 +375,11 @@ const Project = () => {
           </div>
         </div>
 
-        {currentFile && (
+      
           <div className="code-editor flex flex-col h-full flex-grow">
             <div className="top flex gap-1 bg-slate-200 p-1">
+
+              <div className="files flex w-full">
               {
                 openFiles.map((file, index) => (
                   <button
@@ -395,6 +397,33 @@ const Project = () => {
                   </button>
                 ))
               }
+              </div>
+
+              <div className="actions flex gap-2">
+                <button
+                onClick={async() => {
+                  await webContainer.mount(fileTree)
+
+                  const installProcess = await 
+                  webContainer?.spawn("npm", ["install"]);
+
+                  installProcess?.output.pipeTo(new WritableStream({
+                    write(chunk) {
+                      console.log(chunk);
+                    }
+                  }))
+
+                  const runProcess = await webContainer?.spawn("npm", ["start"]);
+
+                  runProcess?.output.pipeTo(new WritableStream({
+                    write(chunk) {
+                      console.log(chunk);
+                    }
+                  }))
+                }}
+                >run</button>
+
+              </div>
             </div>
             <div className="bottom flex flex-grow h-full">
               {fileTree[currentFile] && fileTree[currentFile].file && (
@@ -422,7 +451,7 @@ const Project = () => {
               )}
             </div>
           </div>
-        )}
+
       </section>
 
       <div
